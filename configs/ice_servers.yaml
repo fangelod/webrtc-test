@@ -1,0 +1,18 @@
+---
+# servers is a list of RTCIceServers used for STUN/TURN
+# https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer
+#
+# Each RTCIceServer can have the following properties:
+# - credential          optional
+# - credentialType      optional
+# - url                 deprecated
+# - urls                required
+# - username            optional
+#
+# Only the "urls" property needs to be specified which is a list of strings.
+# The other fields are only for TURN servers, which is not supported at this
+# time. At least one STUN server must be specified for webRTC-related
+# functionality to work.
+servers:
+    - urls:
+        - "stun:stun.l.google.com:19302"
