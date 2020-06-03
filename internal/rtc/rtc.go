@@ -51,6 +51,8 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
 		return webrtc.SessionDescription{}, nil, err
 	}
 
+	attachHandlers(pc)
+
 	if err := pc.SetRemoteDescription(offer); err != nil {
 		pc.Close()
 		return webrtc.SessionDescription{}, nil, err

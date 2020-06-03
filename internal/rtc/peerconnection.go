@@ -26,3 +26,19 @@ func newPeerConnection() (*webrtc.PeerConnection, error) {
 
 	return pc, nil
 }
+
+func attachHandlers(pc *webrtc.PeerConnection) {
+	pc.OnICEConnectionStateChange(func(i webrtc.ICEConnectionState) {
+		if i == webrtc.ICEConnectionStateClosed {
+			// Remove from call
+		}
+	})
+
+	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
+		// Debug signaling state
+	})
+
+	pc.OnTrack(func(t *webrtc.Track, r *webrtc.RTPReceiver) {
+		// Add track to call
+	})
+}

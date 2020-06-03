@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/fangelod/webrtc-test/internal/rtc"
@@ -15,6 +14,7 @@ func newCallHandler(c *gin.Context) {
 	sdp := rtc.RTCSessionDescription{}
 	if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	answer, call, err := rtc.NewCall(sdp.Description, sdp.Name, sdp.User)
@@ -81,7 +81,13 @@ func iceCandidateHandler(c *gin.Context) {
 		return
 	}
 
-	if err := rtc.AddICECandidateForUser(id, "", ""); err != nil {
+	can := rtc.CandidateFromClient{}
+	if err := json.NewDecoder(c.Request.Body).Decode(&can); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := rtc.AddICECandidateForUser(id, can.User, can.Candidate); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

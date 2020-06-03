@@ -42,6 +42,11 @@ type IceServer struct {
 	Username       string   `json:"username" yaml:"username"`
 }
 
+type CandidateFromClient struct {
+	Candidate string `json:"candidate"`
+	User      string `json:"user"`
+}
+
 func (i *IceServer) toIceServer() webrtc.ICEServer {
 	newRIS := webrtc.ICEServer{}
 

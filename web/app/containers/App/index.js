@@ -1,4 +1,5 @@
 import { getCalls, saveName, startCall } from 'App/actions';
+import { selectCalls, selectTracks, selectUser } from 'App/selectors';
 
 import {
   AppBar,
@@ -8,13 +9,17 @@ import {
   DialogContent,
   DialogContentText,
   IconButton,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
+  ListItemText,
   Paper,
   TextField,
-  Typography
+  Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { AddIcCall } from '@material-ui/icons';
 
 const useStyles = makeStyles(theme => {
@@ -71,6 +76,9 @@ const App = () => {
   const [state, setState] = useState(initialState);
   const classes = useStyles(state);
   const dispatch = useDispatch();
+  const calls = useSelector(selectCalls);
+  const streams = useSelector(selectTracks);
+  const user = useSelector(selectUser);
 
   useEffect(() => {
     dispatch(getCalls());
@@ -92,8 +100,74 @@ const App = () => {
           </IconButton>
         </AppBar>
         <div className={classes.content}>
-          <Paper className={classes.calls}></Paper>
-          <Paper className={classes.streams}></Paper>
+          <Paper className={classes.calls}>
+            <List>
+              {calls.valueSeq().map(call => {
+                return (
+                  <ListItem key={call.get('id')}>
+                    <ListItemText
+                      primary={call.get('name') || 'Untitled'}
+                    />
+                    {!call.get('connection') ? (
+                      <ListItemSecondaryAction>
+                        <Button>
+                          Join
+                        </Button>
+                      </ListItemSecondaryAction>
+                    ) : null}
+                  </ListItem>
+                );
+              })}
+            </List>
+          </Paper>
+          <Paper className={classes.streams}>
+            {streams.map(stream => {
+              const audios = stream.getAudioTracks();
+              const videos = stream.getVideoTracks();
+              if (audios.length > 0 && videos.length === 0) {
+                return (
+                  <audio
+                    key={stream.id}
+                    ref={audio => {
+                      if (audio) {
+                        audio.srcObject = stream;
+                      }
+                    }}
+                    autoPlay={true}
+                    controls={true}
+                  />
+                );
+              } else if (audios.length === 0 && videos.length > 0) {
+                return (
+                  <video
+                    key={stream.id}
+                    ref={video => {
+                      if (video) {
+                        video.srcObject = stream;
+                      }
+                    }}
+                    autoPlay={true}
+                    controls={true}
+                  />
+                );
+              } else if (audios.length === 0 && videos.length === 0) {
+                return null;
+              } else {
+                return (
+                  <video
+                    key={stream.id}
+                    ref={video => {
+                      if (video) {
+                        video.srcObject = stream;
+                      }
+                    }}
+                    autoPlay={true}
+                    controls={true}
+                  />
+                );
+              }
+            })}
+          </Paper>
         </div>
       </div>
       <Dialog disableBackdropClick={true} disableEscapeKeyDown={true} open={state.open}>
