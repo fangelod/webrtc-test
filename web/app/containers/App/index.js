@@ -72,9 +72,9 @@ const useStyles = makeStyles(theme => {
 });
 
 const App = () => {
-  const initialState = { name: "", open: true };
-  const [state, setState] = useState(initialState);
-  const classes = useStyles(state);
+  const [name, setName] = useState("");
+  const [open, setOpen] = useState(true);
+  const classes = useStyles({ name: name });
   const dispatch = useDispatch();
   const calls = useSelector(selectCalls);
   const streams = useSelector(selectTracks);
@@ -170,23 +170,23 @@ const App = () => {
           </Paper>
         </div>
       </div>
-      <Dialog disableBackdropClick={true} disableEscapeKeyDown={true} open={state.open}>
+      <Dialog disableBackdropClick={true} disableEscapeKeyDown={true} open={open}>
         <DialogContent>
           <DialogContentText>
             Choose a name to continue
           </DialogContentText>
           <TextField
             autoFocus={true}
-            onChange={event => setState({ name: event.target.value, open: state.open })}
+            onChange={event => setName(event.target.value)}
           />
         </DialogContent>
         <DialogActions>
           <Button
             className={classes.submit}
-            disabled={state.name === ""}
+            disabled={name === ""}
             onClick={() => {
-              dispatch(saveName(state.name));
-              setState({ name: state.name, open: false });
+              dispatch(saveName(name));
+              setOpen(false);
             }}
           >
             Submit
