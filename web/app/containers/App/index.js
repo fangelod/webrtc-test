@@ -85,115 +85,21 @@ const App = () => {
   }, []);
 
   return (
-    <React.Fragment>
-      <div className={classes.mainDiv}>
-        <AppBar className={classes.appBar} position={'relative'}>
-          <Typography className={classes.title} variant={'h4'}>
-            Testing webRTC
-          </Typography>
-          <IconButton
-            color={'inherit'}
-            onClick={() => dispatch(startCall())}
-            title={'Start a new call'}
-          >
-            <AddIcCall />
-          </IconButton>
-        </AppBar>
-        <div className={classes.content}>
-          <Paper className={classes.calls}>
-            <List>
-              {calls.valueSeq().map(call => {
-                return (
-                  <ListItem key={call.get('id')}>
-                    <ListItemText
-                      primary={call.get('name') || 'Untitled'}
-                    />
-                    {!call.get('connection') ? (
-                      <ListItemSecondaryAction>
-                        <Button>
-                          Join
-                        </Button>
-                      </ListItemSecondaryAction>
-                    ) : null}
-                  </ListItem>
-                );
-              })}
-            </List>
-          </Paper>
-          <Paper className={classes.streams}>
-            {streams.map(stream => {
-              const audios = stream.getAudioTracks();
-              const videos = stream.getVideoTracks();
-              if (audios.length > 0 && videos.length === 0) {
-                return (
-                  <audio
-                    key={stream.id}
-                    ref={audio => {
-                      if (audio) {
-                        audio.srcObject = stream;
-                      }
-                    }}
-                    autoPlay={true}
-                    controls={true}
-                  />
-                );
-              } else if (audios.length === 0 && videos.length > 0) {
-                return (
-                  <video
-                    key={stream.id}
-                    ref={video => {
-                      if (video) {
-                        video.srcObject = stream;
-                      }
-                    }}
-                    autoPlay={true}
-                    controls={true}
-                  />
-                );
-              } else if (audios.length === 0 && videos.length === 0) {
-                return null;
-              } else {
-                return (
-                  <video
-                    key={stream.id}
-                    ref={video => {
-                      if (video) {
-                        video.srcObject = stream;
-                      }
-                    }}
-                    autoPlay={true}
-                    controls={true}
-                  />
-                );
-              }
-            })}
-          </Paper>
-        </div>
-      </div>
-      <Dialog disableBackdropClick={true} disableEscapeKeyDown={true} open={open}>
-        <DialogContent>
-          <DialogContentText>
-            Choose a name to continue
-          </DialogContentText>
-          <TextField
-            autoFocus={true}
-            onChange={event => setName(event.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            className={classes.submit}
-            disabled={name === ""}
-            onClick={() => {
-              dispatch(saveName(name));
-              setOpen(false);
-            }}
-          >
-            Submit
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </React.Fragment>
+    <div id={'content'}>
+      <div id={'signalingContainer'} style={{ display: 'none' }}>
+        Browser base64 Session Description<br />
+        <textarea id={'localSessionDescription'} readOnly={true}></textarea> <br /> 
+        Golang base64 Session Description<br />
+        <textarea id={'remoteSessionDescription'}></textarea> <br />
+        <button onClick={() => console.log('heh')}> Start Session </button> <br />
+      </div> <br />
+      Video<br />
+      <video id={'video1'} width={'160'} height={'120'} autoplay muted></video><br />
+      <button class={'createSessionButton'} onClick={() => dispatch(startCall())}> Publish a Broadcast </button>
+      <button class={'createSessionButton'} onClick={() => dispatch(joinCall())}> Join a Broadcast </button><br /><br />
+      Logs<br />
+      <div id={'logs'}></div>
+    </div>
   );
 };
 export default App;

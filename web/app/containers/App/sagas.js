@@ -99,7 +99,7 @@ export function* doSaveTrack(action) {
 export function* doStartCall() {
   try {
     const servers = yield call(request, '/iceservers', { method: 'GET' });
-    const constraints = { audio: true, video: true };
+    const constraints = { audio: false, video: true };
     const user = yield select(selectUser);
 
     navigator.mediaDevices.getUserMedia(constraints).then(stream => {
