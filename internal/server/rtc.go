@@ -40,17 +40,23 @@ func joinCallHandler(c *gin.Context) {
 	idString := c.Param("id")
 	id, err := uuid.FromString(idString)
 	if err != nil {
+	        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+        sdp := rtc.RTCSessionDescription{}
+        if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
+
+        answer, err := rtc.JoinCall(sdp.User, sdp.Description, id)
+        if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	call, err := rtc.JoinCall("", "", id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, call)
+        c.JSON(http.StatusOK, gin.H{"sdp": answer})
 }
 
 func leaveCallHandler(c *gin.Context) {

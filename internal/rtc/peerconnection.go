@@ -7,7 +7,7 @@ import (
 )
 
 func newPeerConnection() (*webrtc.PeerConnection, error) {
-	config := webrtc.Configuration{ICEServers: rtcIceServers}
+        config := webrtc.Configuration{ICEServers: rtcIceServers}
 
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {

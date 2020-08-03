@@ -1,4 +1,4 @@
-import { getCalls, saveName, startCall } from 'App/actions';
+import { getCalls, saveName, startCall, joinCall } from 'App/actions';
 import { selectCalls, selectTracks, selectUser } from 'App/selectors';
 
 import {
@@ -94,9 +94,14 @@ const App = () => {
         <button onClick={() => console.log('heh')}> Start Session </button> <br />
       </div> <br />
       Video<br />
-      <video id={'video1'} width={'160'} height={'120'} autoplay muted></video><br />
-      <button class={'createSessionButton'} onClick={() => dispatch(startCall())}> Publish a Broadcast </button>
-      <button class={'createSessionButton'} onClick={() => dispatch(joinCall())}> Join a Broadcast </button><br /><br />
+      <video id={'video1'} width={'160'} height={'120'} autoPlay muted></video><br />
+      <button className={'createSessionButton'} onClick={() => dispatch(startCall())}> Publish a Broadcast </button><br />
+      {calls.valueSeq().map(call => {
+        return (
+          <button className={'createSessionButton'} onClick={() => dispatch(joinCall(call.get('id'), ''))}> {call.get('id')} </button>
+        );
+      })} 
+      <br /><br />
       Logs<br />
       <div id={'logs'}></div>
     </div>

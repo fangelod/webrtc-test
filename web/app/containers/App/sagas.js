@@ -13,6 +13,7 @@ import {
 import {
   GET_CALLS,
   ICE_CANDIDATE,
+  JOIN_CALL,
   SAVE_TRACK,
   START_CALL
 } from 'App/constants';
@@ -96,6 +97,56 @@ export function* doSaveTrack(action) {
   }
 }
 
+function* doJoinCall(action) {
+  try {
+    const servers = yield call(request, '/iceservers', { method: 'GET' });
+    const pc = new RTCPeerConnection({ iceServers: servers });
+    const user = yield select(selectUser);
+
+    pc.onicecandidate = e => {
+      if (e.candidate) {
+        windowChannel.put(iceCandidate(pc, e.candidate));
+      }
+    };
+    pc.oniceconnectionstatechange = e => console.log(`ICE Connection State: ${pc.iceConnectionState}`);
+    pc.onsignalingstatechange = ev => console.log(`Signaling State: ${ev.target.signalingState}`);
+    pc.onnegotiationneeded = ev => console.log('Negotiation Needed');
+
+    pc.addTransceiver('video');
+
+    pc.createOffer().then(desc => {
+      pc.setLocalDescription(desc).then(() => {
+        axios({
+          url: `/calls/${action.payload}/join`,
+          method: 'POST',
+          data: {
+            id: action.payload,
+            offer: desc,
+            user: user
+          }
+        }).then(response => {
+          if (response.status !== 200) {
+            throw new Error(response.statusText);
+          }
+          pc.setRemoteDescription(response.data.sdp).then(() => {
+            windowChannel.put(joinCallSuccess(action.payload, response.data.sdp));
+          }).catch(e => console.error(e));
+        }).catch(e => console.error(e));
+      }).catch(e => console.error(e));
+    }).catch(e => console.error(e));
+
+    pc.ontrack = function (event) {
+      var el = document.getElementById('video1');
+      el.srcObject = event.streams[0];
+      el.autoplay = true;
+      el.controls = true;
+    };
+  } catch (err) {
+    console.error(err);
+    yield put(joinCallErr(action.payload, err));
+  }
+}
+
 export function* doStartCall() {
   try {
     const servers = yield call(request, '/iceservers', { method: 'GET' });
@@ -110,17 +161,15 @@ export function* doStartCall() {
         }
       };
       pc.oniceconnectionstatechange = e => console.log(`ICE Connection State: ${pc.iceConnectionState}`);
-      pc.ontrack = e => {
-        if (e.streams) {
-          e.streams.forEach(s => windowChannel.put(saveTrack(pc, s)));
-        }
-      };
       pc.onsignalingstatechange = ev => console.log(`Signaling State: ${ev.target.signalingState}`);
       pc.onnegotiationneeded = ev => console.log('Negotiation Needed');
 
-      const tracks = stream.getTracks();
-      tracks.forEach(track => pc.addTrack(track));
+      //pc.addTrack(), getVideo
 
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));        
+
+      //pc.addStream(document.getElementById('video1').srcObject = stream);
+      document.getElementById('video1').srcObject = stream;
       pc.createOffer().then(desc => {
         pc.setLocalDescription(desc).then(() => {
           axios({
@@ -168,6 +217,10 @@ export function* iceCandidateWatcher() {
   yield takeEvery(ICE_CANDIDATE, doIceCandidate);
 }
 
+export function* joinCallWatcher() {
+  yield takeEvery(JOIN_CALL, doJoinCall);
+}
+
 export function* saveTrackWatcher() {
   yield takeEvery(SAVE_TRACK, doSaveTrack);
 }
@@ -180,6 +233,7 @@ export default [
   channelWatcher,
   getCallsWatcher,
   iceCandidateWatcher,
+  joinCallWatcher,
   saveTrackWatcher,
   startCallWatcher,
 ];
