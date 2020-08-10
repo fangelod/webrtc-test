@@ -164,12 +164,20 @@ export function* doStartCall() {
       pc.onsignalingstatechange = ev => console.log(`Signaling State: ${ev.target.signalingState}`);
       pc.onnegotiationneeded = ev => console.log('Negotiation Needed');
 
-      //pc.addTrack(), getVideo
-
+      //pc.addTrack(), .getVideoTracks()[]
+      //pc.addTrack(stream.getVideoTracks()[0]);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));        
-
       //pc.addStream(document.getElementById('video1').srcObject = stream);
+      
       document.getElementById('video1').srcObject = stream;
+      pc.ontrack = (event) => {
+        console.log("Got a track event", event);
+        var element = document.getElementById('video2');
+        element.srcObject = event.streams[0];
+        element.autoplay = true;
+        element.controls = true;
+      };
+
       pc.createOffer().then(desc => {
         pc.setLocalDescription(desc).then(() => {
           axios({

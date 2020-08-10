@@ -95,6 +95,7 @@ const App = () => {
       </div> <br />
       Video<br />
       <video id={'video1'} width={'160'} height={'120'} autoPlay muted></video><br />
+      <video id={'video2'} width={'160'} height={'120'} autoPlay muted></video><br />
       <button className={'createSessionButton'} onClick={() => dispatch(startCall())}> Publish a Broadcast </button><br />
       {calls.valueSeq().map(call => {
         return (

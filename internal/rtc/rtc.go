@@ -5,6 +5,7 @@ import (
 	"fmt"
         "io"
         "time"
+        "math/rand"
 
         "github.com/pion/rtcp"
 	webrtc "github.com/pion/webrtc/v2"
@@ -17,6 +18,7 @@ const (
 
 var (
 	ongoingCalls map[uuid.UUID]*Call
+        TestTrack *webrtc.Track
 )
 
 type Constraints struct {
@@ -46,14 +48,13 @@ func init() {
 }
 
 func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.SessionDescription, *Call, error) {
-	call := &Call{
+        call := &Call{
 		ID:           uuid.NewV4(),
 		Name:         name,
 		Participants: []string{user},
 		Connections:  make(map[string]*webrtc.PeerConnection),
 		Tracks:       make(map[string]*webrtc.Track),
 	}
-        //fmt.Println("Test SEE ME")
 	//pc, err := newPeerConnection()
 	//if err != nil {
 	//	return webrtc.SessionDescription{}, nil, err
@@ -63,6 +64,11 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
         err := mediaEngine.PopulateFromSDP(offer)
         if err != nil {
                 return webrtc.SessionDescription{}, nil, err
+        }
+        
+        videoCodecs := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo)
+        if len(videoCodecs) == 0 {
+                fmt.Println("Offer had no video codecs");
         }
 
         api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
@@ -78,11 +84,23 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                 return webrtc.SessionDescription{}, nil, err
         }
         
+        outputTrack, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", "pion")
+        if err != nil {
+                fmt.Println("NewTrack creation err")
+                fmt.Println(err)
+                pc.Close()
+                return webrtc.SessionDescription{}, nil, err
+        }
         
-        localTrackChan := make(chan *webrtc.Track)
-        fmt.Println("Before on track")
+        if _, err = pc.AddTrack(outputTrack); err !=nil {
+                fmt.Println("AddTrack Err")
+                fmt.Println(err)
+                pc.Close()
+                return webrtc.SessionDescription{}, nil, err
+        }
+
+        //localTrackChan := make(chan *webrtc.Track)
         pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
-                fmt.Println("Inside Ontrack before func")
 
                 go func() {
                         ticker := time.NewTicker(rtcpPLIInterval)
@@ -92,15 +110,17 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                                 }
                         }
                 }()
-                fmt.Println("after func")
-                localTrack, err := pc.NewTrack(remoteTrack.PayloadType(), remoteTrack.SSRC(), "video", "pion")
+                //localTrack, err := pc.NewTrack(remoteTrack.PayloadType(), remoteTrack.SSRC(), "video", "pion")
                 if err != nil {
                         fmt.Println("New Track err")
                         panic(err)
                 }
                 fmt.Println("Before channel thing")
-                localTrackChan <- localTrack
-                
+                //localTrackChan <- localTrack
+                //ongoingCalls[call.ID].Track = localTrack
+
+                //TestTrack = localTrack
+
                 rtpBuf := make([]byte, 1400)
                 fmt.Println("Before loop")
                 for {
@@ -110,14 +130,14 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                                 panic(err)
                         }
 
-                        if _, err = localTrack.Write(rtpBuf[:i]); err != nil && err != io.ErrClosedPipe {
+                        if _, err = outputTrack.Write(rtpBuf[:i]); err != nil && err != io.ErrClosedPipe {
                                 fmt.Println("Local Track Write err")
                                 panic(err)
                         }
                 }
                 fmt.Println("after for loop")
         })
-        fmt.Println("After Track")
+
 	//attachHandlers(pc)
 
 	err = pc.SetRemoteDescription(offer); 
@@ -125,6 +145,8 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
 		pc.Close()
 		return webrtc.SessionDescription{}, nil, err
 	}
+        
+        
 
 	ans, err := pc.CreateAnswer(nil)
 	if err != nil {
@@ -141,12 +163,9 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
         fmt.Println("Adding call to list of calls")
         call.Connections[user] = pc
         ongoingCalls[call.ID] = call
-        ongoingCalls[call.ID].Track = <-localTrackChan
+        //ongoingCalls[call.ID].Track = <-localTrackChan
         fmt.Println("After remote and local set, after channel thing")
-        //localTrack := <-localTrackChan
         
-        //fmt.Println("Storing local track in call")
-        //Store remote tracks for redistribution
         return ans, call, nil
 }
 
@@ -180,9 +199,9 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
 	}
         
         //need to grab local tracks and addTrack
-        localTrack := ongoingCalls[id].Track
+        //localTrack := ongoingCalls[id].Track
 
-        _, err = pc.AddTrack(localTrack)
+        _, err = pc.AddTrack(TestTrack)
         if err != nil {
                 pc.Close()
                 return webrtc.SessionDescription{}, err
