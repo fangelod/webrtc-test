@@ -111,26 +111,29 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                         }
                 }()
                 //localTrack, err := pc.NewTrack(remoteTrack.PayloadType(), remoteTrack.SSRC(), "video", "pion")
-                if err != nil {
-                        fmt.Println("New Track err")
-                        panic(err)
-                }
-                fmt.Println("Before channel thing")
+                //if err != nil {
+                //        fmt.Println("New Track err")
+                //        panic(err)
+                //}
                 //localTrackChan <- localTrack
                 //ongoingCalls[call.ID].Track = localTrack
 
                 //TestTrack = localTrack
 
-                rtpBuf := make([]byte, 1400)
-                fmt.Println("Before loop")
+                //rtpBuf := make([]byte, 1400)
+
                 for {
-                        i, err := remoteTrack.Read(rtpBuf)
+                        //i, err := remoteTrack.Read(rtpBuf)
+                        packet, err := remoteTrack.ReadRTP()
                         if err != nil {
                                 fmt.Println("Remote Track Read err")
                                 panic(err)
                         }
 
-                        if _, err = outputTrack.Write(rtpBuf[:i]); err != nil && err != io.ErrClosedPipe {
+                        packet.SSRC = outputTrack.SSRC()
+
+                        //if _, err = outputTrack.Write(rtpBuf[:i]); err != nil && err != io.ErrClosedPipe {
+                        if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
                                 fmt.Println("Local Track Write err")
                                 panic(err)
                         }

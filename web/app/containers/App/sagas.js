@@ -164,14 +164,22 @@ export function* doStartCall() {
       pc.onsignalingstatechange = ev => console.log(`Signaling State: ${ev.target.signalingState}`);
       pc.onnegotiationneeded = ev => console.log('Negotiation Needed');
 
-      //pc.addTrack(), .getVideoTracks()[]
+      //Add track to the connection with pc.addTrack() / .getVideoTracks()[]
       //pc.addTrack(stream.getVideoTracks()[0]);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));        
+      
+      //Old
       //pc.addStream(document.getElementById('video1').srcObject = stream);
       
+      //sets broadcaster stream to first video player
       document.getElementById('video1').srcObject = stream;
+      
+      pc.addTransceiver("video");
+
       pc.ontrack = (event) => {
         console.log("Got a track event", event);
+
+        //sets stream from server to the second video player
         var element = document.getElementById('video2');
         element.srcObject = event.streams[0];
         element.autoplay = true;

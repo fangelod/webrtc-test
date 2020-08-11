@@ -103,8 +103,7 @@ const App = () => {
         );
       })} 
       <br /><br />
-      Logs<br />
-      <div id={'logs'}></div>
+      <button className={'checkMediaStream'} onClick={() => console.log(document.getElementById('video2').srcObject)}> Check Stream </button>
     </div>
   );
 };
