@@ -114,6 +114,14 @@ function* doJoinCall(action) {
 
     pc.addTransceiver('video');
 
+    pc.ontrack = function (event) {
+      console.log("Got a track event", event);
+      var el = document.getElementById('video2');
+      el.srcObject = event.streams[0];
+      el.autoplay = true;
+      el.controls = true;
+    };
+
     pc.createOffer().then(desc => {
       pc.setLocalDescription(desc).then(() => {
         axios({
@@ -134,13 +142,6 @@ function* doJoinCall(action) {
         }).catch(e => console.error(e));
       }).catch(e => console.error(e));
     }).catch(e => console.error(e));
-
-    pc.ontrack = function (event) {
-      var el = document.getElementById('video1');
-      el.srcObject = event.streams[0];
-      el.autoplay = true;
-      el.controls = true;
-    };
   } catch (err) {
     console.error(err);
     yield put(joinCallErr(action.payload, err));

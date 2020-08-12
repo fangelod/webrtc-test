@@ -41,6 +41,7 @@ type Call struct {
 	Connections  map[string]*webrtc.PeerConnection `json:"-"`
 	Tracks       map[string]*webrtc.Track          `json:"-"`
         Track        *webrtc.Track                     `json:"-"`
+        Api          *webrtc.API                       `json:"-"`
 }
 
 func init() {
@@ -163,11 +164,11 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
 		return webrtc.SessionDescription{}, nil, err
 	}
         
-        fmt.Println("Adding call to list of calls")
         call.Connections[user] = pc
         ongoingCalls[call.ID] = call
-        //ongoingCalls[call.ID].Track = <-localTrackChan
-        fmt.Println("After remote and local set, after channel thing")
+        ongoingCalls[call.ID].Api = api
+        ongoingCalls[call.ID].Track = outputTrack
+        fmt.Println("outputTrack put in ongoingCalls")
         
         return ans, call, nil
 }
@@ -185,30 +186,38 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
 	//	return nil, fmt.Errorf("unable to join call %v, call does not exist", id)
 	// }
 
-	pc, err := newPeerConnection()
-	if err != nil {
-		return webrtc.SessionDescription{}, err
-	}
+	//pc, err := newPeerConnection()
+	//if err != nil {
+	//	return webrtc.SessionDescription{}, err
+	//}
 
 	// body := RTCSessionDescription{}
 	// if err := json.Unmarshal([]byte(offer), &body); err != nil {
 	//	return nil, fmt.Errorf("failed to unmarshal RTCSessionDescription")
 	// }
 
-	// if err := pc.SetRemoteDescription(body.Description); err != nil {
-        if err := pc.SetRemoteDescription(offer); err != nil {
-		pc.Close()
-		return webrtc.SessionDescription{}, err
-	}
+	
+        config := webrtc.Configuration{ICEServers: rtcIceServers}
+        pc, err := ongoingCalls[id].Api.NewPeerConnection(config)
+        if err != nil {
+                return webrtc.SessionDescription{}, err
+        }
         
         //need to grab local tracks and addTrack
-        //localTrack := ongoingCalls[id].Track
+        serverTrack := ongoingCalls[id].Track
 
-        _, err = pc.AddTrack(TestTrack)
+        _, err = pc.AddTrack(serverTrack)
         if err != nil {
                 pc.Close()
                 return webrtc.SessionDescription{}, err
         }
+
+        
+        // if err := pc.SetRemoteDescription(body.Description); err != nil {
+        if err := pc.SetRemoteDescription(offer); err != nil {
+		pc.Close()
+		return webrtc.SessionDescription{}, err
+	}
 
 	ans, err := pc.CreateAnswer(nil)
 	if err != nil {
