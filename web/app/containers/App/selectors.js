@@ -4,6 +4,13 @@ const selectCalls = state => {
   return state.getIn(['app', 'calls']);
 };
 
+const selectCallId = state => {
+  return state.getIn(['app', 'callId']);
+};
+
+const selectPeerConnection = state => {
+  return state.getIn(['app', 'peerConnection']);
+};
 const selectConnectionId = (state, connection) => {
   return state.getIn(['app', 'calls']).findKey(call => {
     return connection.localDescription.sdp === call.getIn(['connection']).localDescription.sdp;
@@ -27,6 +34,8 @@ const selectTracks = state => {
 const selectUser = state => state.getIn(['app', 'name']);
 
 export {
+  selectCallId,
+  selectPeerConnection,
   selectCalls,
   selectConnectionId,
   selectCurrentCall,

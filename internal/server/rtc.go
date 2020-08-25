@@ -17,13 +17,13 @@ func newCallHandler(c *gin.Context) {
 		return
 	}
 
-	answer, call, err := rtc.NewCall(sdp.Description, sdp.Name, sdp.User)
+	answer, callId, err := rtc.NewCall(sdp.Description, sdp.Name, sdp.User)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"call": call, "sdp": answer})
+	c.JSON(http.StatusOK, gin.H{"callId": callId, "sdp": answer})
 }
 
 func getCallsHandler(c *gin.Context) {
@@ -76,7 +76,26 @@ func leaveCallHandler(c *gin.Context) {
 }
 
 func renegotiateCallHandler(c *gin.Context) {
+	idString := c.Param("id")
+	id, err := uuid.FromString(idString)
+	if err != nil {
+	        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
+        sdp := rtc.RTCSessionDescription{}
+        if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
+
+        answer, err := rtc.RenegotiateCall(sdp.User, id)
+        if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+        c.JSON(http.StatusOK, gin.H{"sdp": answer})
 }
 
 func iceCandidateHandler(c *gin.Context) {

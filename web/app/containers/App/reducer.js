@@ -9,6 +9,8 @@ import { fromJS, List } from 'immutable';
 
 const initialState = fromJS({
   calls: {},
+  callId: '',
+  peerConnection: '',
   currentCall: '',
   name: '',
 });
@@ -37,7 +39,8 @@ function appReducer(state = initialState, action) {
 
     case START_CALL_SUCCESS:
       return state
-        .setIn(['calls', action.payload.id], fromJS(action.payload))
+        .set('callId', action.payload.id)
+        .set('peerConnection', action.payload.peerConnection)
         .set('currentCall', action.payload.id);
 
     default:

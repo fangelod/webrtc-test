@@ -72,7 +72,7 @@ func Run(version string) {
 	callGroup.POST("/icecandidate", iceCandidateHandler)
 	callGroup.POST("/join", joinCallHandler)
 	callGroup.POST("/leave", leaveCallHandler)
-	callGroup.PUT("/renegotiate", renegotiateCallHandler)
+	callGroup.POST("/renegotiate", renegotiateCallHandler)
 
 	server.GET("/websocket", websocketHandler)
 

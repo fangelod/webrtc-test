@@ -125,7 +125,10 @@ export const startCall = () => ({ type: START_CALL });
 
 export const startCallErr = err => ({ type: START_CALL_FAILURE, payload: err });
 
-export const startCallSuccess = call => ({
+export const startCallSuccess = (callId, peerConnection) => ({
   type: START_CALL_SUCCESS,
-  payload: call
+  payload: {
+    id: callId,
+    peerConnection: peerConnection
+  }
 });
