@@ -1,6 +1,7 @@
 import App from 'App';
 import appReducer from 'App/reducer';
 import appSaga from 'App/sagas';
+import websocketSaga from 'Websockets/sagas';
 
 import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
 import ReactDOM from 'react-dom';
@@ -16,7 +17,8 @@ const rootReducer = combineReducers({
 });
 
 const sagas = [
-  ...appSaga
+  ...appSaga,
+  ...websocketSaga,
 ];
 
 function* rootSaga() {
