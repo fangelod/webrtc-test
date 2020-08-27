@@ -83,13 +83,13 @@ func renegotiateCallHandler(c *gin.Context) {
 		return
 	}
 
-        sdp := rtc.RTCSessionDescription{}
-        if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
-                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-                return
-        }
+        //sdp := rtc.RTCSessionDescription{}
+        //if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
+        //        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        //        return
+        //}
 
-        answer, err := rtc.RenegotiateCall(sdp.User, id)
+        answer, err := rtc.RenegotiateCall(id)
         if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

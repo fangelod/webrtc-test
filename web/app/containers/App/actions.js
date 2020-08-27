@@ -90,6 +90,11 @@ export const renegotiateErr = (id, err) => ({
   meta: id
 });
 
+export const renegotiateForce = () => ({
+  type: RENEGOTIATE
+});
+        
+
 export const renegotiateSuccess = (id, answer) => ({
   type: RENEGOTIATE_SUCCESS,
   payload: {

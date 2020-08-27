@@ -42,6 +42,7 @@ type Call struct {
 	Tracks       map[string]*webrtc.Track          `json:"-"`
         Track        *webrtc.Track                     `json:"-"`
         Track2       *webrtc.Track                     `json:"-"`
+        Track3       *webrtc.Track                     `json:"-"`
         Api          *webrtc.API                       `json:"-"`
         pc           *webrtc.PeerConnection            `json:"-"`
 }
@@ -95,7 +96,15 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                 return webrtc.SessionDescription{}, call.ID, err
         }
         
+        outputTrack3, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", "pion3")
+        if err != nil {
+                fmt.Println("outputTrack3 creation err")
+                fmt.Println(err)
+                pc.Close()
+                return webrtc.SessionDescription{}, call.ID, err
+        }
         //pc.AddTrack(outputTrack)
+        pc.AddTrack(outputTrack3)
 
         pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
 
@@ -155,6 +164,7 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
         ongoingCalls[call.ID] = call
         ongoingCalls[call.ID].Api = api
         ongoingCalls[call.ID].Track = outputTrack
+        ongoingCalls[call.ID].Track3 = outputTrack3
         ongoingCalls[call.ID].pc = pc
         fmt.Println("outputTrack put in ongoingCalls")
         
@@ -199,9 +209,9 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
         }
 
         //need to grab local tracks and addTracks to connection
-        //serverTrack := ongoingCalls[id].Track
+        serverTrack := ongoingCalls[id].Track
         
-        //_, err = pc.AddTrack(serverTrack)
+        _, err = pc.AddTrack(serverTrack)
         if err != nil {
                 pc.Close()
                 return webrtc.SessionDescription{}, err
@@ -209,7 +219,7 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
 
         //take remote track and make it a local track 
         //96 is the videocodec payloadType
-        outputTrack2, err := pc.NewTrack(96, rand.Uint32(), "video", "pion2")
+        //outputTrack2, err := pc.NewTrack(96, rand.Uint32(), "video", "pion2")
         if err != nil {
                 fmt.Println("NewTrack creation err")
                 fmt.Println(err)
@@ -217,24 +227,27 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
                 return webrtc.SessionDescription{}, err
         }
         
-        _, err = pc.AddTrack(outputTrack2)
+        //ongoingCalls[id].Track3 = outputTrack2
+        //outputTrack2 := ongoingCalls[id].Track3
+        //_, err = pc.AddTrack(outputTrack2)
+        //_, err = pc.AddTrack(ongoingCalls[id].Track3)
         if err != nil {
                 fmt.Println("outputTrack2 add err")
         }
 
-        _, err = ongoingCalls[id].pc.AddTrack(outputTrack2)
+        //_, err = ongoingCalls[id].pc.AddTrack(outputTrack2)
         if err != nil {
                 fmt.Println("addTrack err")
                 pc.Close()
                 return webrtc.SessionDescription{}, err
         }
 
-        answer, err := ongoingCalls[id].pc.CreateAnswer(nil)
+        //answer, err := ongoingCalls[id].pc.CreateAnswer(nil)
         if err != nil {
                 fmt.Println("Err creating answer")
         }
 
-        err = ongoingCalls[id].pc.SetLocalDescription(answer)
+        //err = ongoingCalls[id].pc.SetLocalDescription(answer)
         if err != nil {
                 fmt.Println("Err setting local description for caller one")
         }
@@ -257,9 +270,13 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
                                 panic(err)
                         }
 
-                        packet2.SSRC = outputTrack2.SSRC()
 
-                        if err := outputTrack2.WriteRTP(packet2); err != nil && err != io.ErrClosedPipe {
+                        packet2.SSRC = ongoingCalls[id].Track3.SSRC()
+                        //packet2.SSRC = outputTrack2.SSRC()
+
+
+                        if err := ongoingCalls[id].Track3.WriteRTP(packet2); err != nil && err != io.ErrClosedPipe {
+                        //if err := outputTrack2.WriteRTP(packet2); err != nil && err != io.ErrClosedPipe {
                                 fmt.Println("Local Track Write err")
                                 panic(err)
                         }
@@ -284,7 +301,7 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
 		return webrtc.SessionDescription{}, err
 	}
 
-        ongoingCalls[id].Track2 = outputTrack2
+        //ongoingCalls[id].Track2 = outputTrack2
 	// ongoingCalls[id].Participants = append(ongoingCalls[id].Participants, user)
 	// ongoingCalls[id].Connections[user] = pc
         fmt.Println("Join Call Success")
@@ -300,23 +317,26 @@ func LeaveCall(user string, id uuid.UUID) error {
 	return nil
 }
 
-func RenegotiateCall(user string, id uuid.UUID) (webrtc.SessionDescription, error) {
+func RenegotiateCall(id uuid.UUID) (webrtc.SessionDescription, error) {
         pc := ongoingCalls[id].pc
 
         _, err := pc.AddTrack(ongoingCalls[id].Track2)
         if err != nil {
+                fmt.Println("Err adding track")
                 pc.Close()
                 return webrtc.SessionDescription{}, err
         }
         
 	ans, err := pc.CreateAnswer(nil)
 	if err != nil {
+                fmt.Println("Err creating answer")
 		pc.Close()
 		return webrtc.SessionDescription{}, err
 	}
 
 	err = pc.SetLocalDescription(ans)
         if err != nil {
+                fmt.Println("Err setting local description")
 		pc.Close()
 		return webrtc.SessionDescription{}, err
 	}

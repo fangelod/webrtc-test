@@ -167,23 +167,25 @@ function* doJoinCall(action) {
   }
 }
 
-function* doRenegotiateCall(action) {
+function* doRenegotiateCall() {
   try {
     console.log('Renegotiating');
-    console.log(action.payload);
+    //console.log(action.payload);
     //const calls = yield select(selectCalls);
     let pc = yield select(selectPeerConnection);
+    let callId = yield select(selectCallId);
     //console.log(callId);
     console.log(pc);
     //for each user in call need to set a new answer to account for the added track
-    let answer = yield call(request, `/calls/${action.payload}/renegotiate`, {
+    let response = yield call(request, `/calls/${callId}/renegotiate`, {
       method: 'POST',
       data: {
-        id: action.payload
+        id: callId
       }
     });
-   
-    pc.setRemoteDescription(answer);
+    console.log("negotiation response");
+    console.log(response);
+    pc.setRemoteDescription(response.sdp);
     console.log('Renegotiated');
   } catch (err) {
     console.error(err);
