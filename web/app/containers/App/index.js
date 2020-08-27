@@ -1,5 +1,6 @@
 import { getCalls, saveName, startCall } from 'App/actions';
 import { selectCalls, selectTracks, selectUser } from 'App/selectors';
+import Websockets from 'Websockets';
 
 import {
   AppBar,
@@ -193,6 +194,7 @@ const App = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Websockets />
     </React.Fragment>
   );
 };
