@@ -1,5 +1,6 @@
 import { getCalls, saveName, startCall, joinCall, renegotiateForce } from 'App/actions';
 import { selectCalls, selectTracks, selectUser } from 'App/selectors';
+import Websockets from 'containers/Websocket';
 
 import {
   AppBar,
@@ -105,6 +106,7 @@ const App = () => {
       <br /><br />
       <button className={'checkMediaStream'} onClick={() => console.log(document.getElementById('video2').srcObject)}> Check Stream </button>
       <button className={'renegotiate'} onClick={() => dispatch(renegotiateForce())}> Renegotiate </button>
+      <Websockets />
     </div>
   );
 };

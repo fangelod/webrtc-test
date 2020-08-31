@@ -167,6 +167,7 @@ function* doJoinCall(action) {
   }
 }
 
+//function* doRenegotiateCall(action) {
 function* doRenegotiateCall() {
   try {
     console.log('Renegotiating');
@@ -175,17 +176,32 @@ function* doRenegotiateCall() {
     let pc = yield select(selectPeerConnection);
     let callId = yield select(selectCallId);
     //console.log(callId);
-    console.log(pc);
+    //console.log(pc);
     //for each user in call need to set a new answer to account for the added track
-    let response = yield call(request, `/calls/${callId}/renegotiate`, {
-      method: 'POST',
-      data: {
-        id: callId
-      }
-    });
-    console.log("negotiation response");
-    console.log(response);
-    pc.setRemoteDescription(response.sdp);
+    pc.createOffer().then(desc => {
+      pc.setLocalDescription(desc).then(() => {
+        axios({
+          url: `/calls/${callId}/renegotiate`,
+          method: 'POST',
+          data: {
+            id: callId
+            //offer: desc
+          }
+        }).then(response => {
+          console.log("Got Remote offer back");
+          pc.setRemoteDescription(response.data.sdp);
+        }).catch(e => console.error(e));
+      }).catch(e => console.error(e));
+    }).catch(e => console.error(e));
+    //let response = yield call(request, `/calls/${callId}/renegotiate`, {
+    //  method: 'POST',
+    //  data: {
+    //    id: callId
+    //  }
+    //});
+    //console.log("negotiation response");
+    //console.log(response);
+    //pc.setRemoteDescription(response.sdp);
     console.log('Renegotiated');
   } catch (err) {
     console.error(err);
@@ -202,13 +218,14 @@ function* doStartCall() {
     navigator.mediaDevices.getUserMedia(constraints).then(stream => {
       const pc = new RTCPeerConnection({ iceServers: servers });
       pc.onicecandidate = e => {
+        console.log("Ice Candidate", e);
         if (e.candidate) {
          //windowChannel.put(iceCandidate(pc, e.candidate));
         }
       };
       pc.oniceconnectionstatechange = e => console.log(`ICE Connection State: ${pc.iceConnectionState}`);
       pc.onsignalingstatechange = ev => console.log(`Signaling State: ${ev.target.signalingState}`);
-      pc.onnegotiationneeded = ev => console.log('Negotiation Needed', pc);
+      pc.onnegotiationneeded = ev => console.log('Negotiation Needed', ev);
 
       //Add track to the connection with pc.addTrack() / .getVideoTracks()[]
       //pc.addTrack(stream.getVideoTracks()[0]);
