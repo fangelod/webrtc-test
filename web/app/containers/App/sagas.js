@@ -4,7 +4,9 @@ import {
   iceCandidate,
   iceCandidateErr,
   iceCandidateSuccess,
+  joinCallSuccess,
   renegotiate,
+  renegotiateSuccess,
   saveTrack,
   saveTrackErr,
   saveTrackSuccess,
@@ -117,10 +119,21 @@ function* doJoinCall(action) {
 
     pc.ontrack = function (event) {
       console.log("Got a track event", event);
-      var el = document.getElementById('video2');
-      el.srcObject = event.streams[0];
-      el.autoplay = true;
-      el.controls = true;
+
+      //Generate new video player every time we see a track
+      var newVideo = document.createElement("video")
+      newVideo.srcObject = event.streams[0];
+      newVideo.autoplay = true;
+      newVideo.controls = true;
+      newVideo.width = '160';
+      newVideo.height = '120';
+
+      document.getElementById("videoDiv").appendChild(newVideo);
+      
+      //var el = document.getElementById('video2');
+      //el.srcObject = event.streams[0];
+      //el.autoplay = true;
+      //el.controls = true;
     };
 
     navigator.mediaDevices.getUserMedia(constraints).then(stream => {
@@ -155,8 +168,7 @@ function* doJoinCall(action) {
             throw new Error(response.statusText);
           }
           pc.setRemoteDescription(response.data.sdp).then(() => {
-            //windowChannel.put(joinCallSuccess(action.payload, response.data.sdp));
-            //windowChannel.put(renegotiate(action.payload));
+            windowChannel.put(joinCallSuccess(action.payload, pc));
           }).catch(e => console.error(e));
         }).catch(e => console.error(e));
       }).catch(e => console.error(e));
@@ -167,42 +179,37 @@ function* doJoinCall(action) {
   }
 }
 
-//function* doRenegotiateCall(action) {
 function* doRenegotiateCall() {
   try {
     console.log('Renegotiating');
-    //console.log(action.payload);
-    //const calls = yield select(selectCalls);
-    let pc = yield select(selectPeerConnection);
-    let callId = yield select(selectCallId);
-    //console.log(callId);
-    //console.log(pc);
-    //for each user in call need to set a new answer to account for the added track
+    const pc = yield select(selectPeerConnection);
+    const callId = yield select(selectCallId);
+    const user = yield select(selectUser);
+    pc.addTransceiver('video');
+    console.log("Receivers");
+    console.log(pc.getReceivers());
+      
+    console.log("Senders");
+    console.log(pc.getSenders());
+    // Create offer in order to change connection state to allow for the new answer      
     pc.createOffer().then(desc => {
       pc.setLocalDescription(desc).then(() => {
         axios({
           url: `/calls/${callId}/renegotiate`,
           method: 'POST',
           data: {
-            id: callId
-            //offer: desc
+            id: callId,
+            user: user,
+            offer: desc,
           }
         }).then(response => {
           console.log("Got Remote offer back");
-          pc.setRemoteDescription(response.data.sdp);
+          pc.setRemoteDescription(response.data.sdp).then(() => {
+            windowChannel.put(renegotiateSuccess(pc));
+          }).catch(e => console.error(e));
         }).catch(e => console.error(e));
       }).catch(e => console.error(e));
     }).catch(e => console.error(e));
-    //let response = yield call(request, `/calls/${callId}/renegotiate`, {
-    //  method: 'POST',
-    //  data: {
-    //    id: callId
-    //  }
-    //});
-    //console.log("negotiation response");
-    //console.log(response);
-    //pc.setRemoteDescription(response.sdp);
-    console.log('Renegotiated');
   } catch (err) {
     console.error(err);
   }
@@ -237,16 +244,25 @@ function* doStartCall() {
       //sets broadcaster stream to first video player
       document.getElementById('video1').srcObject = stream;
       
-      pc.addTransceiver('video');
-
+      //pc.addTransceiver('video');
+      
       pc.ontrack = (event) => {
         console.log("Got a track event", event);
+        //Generate new video player every time we see a track
+        var newVideo = document.createElement("video")
+        newVideo.srcObject = event.streams[0];
+        newVideo.autoplay = true;
+        newVideo.controls = true;
+        newVideo.width = '160';
+        newVideo.height = '120';
+
+        document.getElementById("videoDiv").appendChild(newVideo);
 
         //sets stream from server to the second video player
-        var element = document.getElementById('video2');
-        element.srcObject = event.streams[0];
-        element.autoplay = true;
-        element.controls = true;
+        //var element = document.getElementById('video2');
+        //element.srcObject = event.streams[0];
+        //element.autoplay = true;
+        //element.controls = true;
       };
 
       console.log("Receivers");
@@ -255,8 +271,6 @@ function* doStartCall() {
       console.log("Senders");
       console.log(pc.getSenders());
 
-
-
       pc.createOffer().then(desc => {
         pc.setLocalDescription(desc).then(() => {
           axios({
@@ -264,7 +278,6 @@ function* doStartCall() {
             method: 'POST',
             data: {
               body: constraints,
-              name: "",
               offer: desc,
               user: user
             }

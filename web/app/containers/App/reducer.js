@@ -2,7 +2,9 @@ import {
   GET_CALLS_SUCCESS,
   SAVE_NAME,
   SAVE_TRACK_SUCCESS,
-  START_CALL_SUCCESS
+  START_CALL_SUCCESS,
+  RENEGOTIATE_SUCCESS,
+  JOIN_CALL_SUCCESS
 } from 'App/constants';
 
 import { fromJS, List } from 'immutable';
@@ -42,6 +44,14 @@ function appReducer(state = initialState, action) {
         .set('callId', action.payload.id)
         .set('peerConnection', action.payload.peerConnection)
         .set('currentCall', action.payload.id);
+
+    case RENEGOTIATE_SUCCESS:
+      return state.set('peerConnection', action.payload.pc);
+
+    case JOIN_CALL_SUCCESS:
+      return state
+        .set('callId', action.payload.id)
+        .set('peerConnection', action.payload.pc)
 
     default:
       return state;

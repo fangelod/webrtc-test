@@ -17,7 +17,7 @@ func newCallHandler(c *gin.Context) {
 		return
 	}
 
-	answer, callId, err := rtc.NewCall(sdp.Description, sdp.Name, sdp.User)
+	answer, callId, err := rtc.NewCall(sdp.Description, sdp.User)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -50,7 +50,7 @@ func joinCallHandler(c *gin.Context) {
                 return
         }
 
-        answer, err := rtc.JoinCall(sdp.User, sdp.Description, id)
+        answer, err := rtc.JoinCall(sdp.Description, id, sdp.User)
         if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -83,13 +83,14 @@ func renegotiateCallHandler(c *gin.Context) {
 		return
 	}
 
-        //sdp := rtc.RTCSessionDescription{}
-        //if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
-        //        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        //        return
-        //}
 
-        answer, err := rtc.RenegotiateCall(id)
+        sdp := rtc.RTCSessionDescription{}
+        if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
+
+        answer, err := rtc.RenegotiateCall(sdp.Description, id, sdp.User)
         if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

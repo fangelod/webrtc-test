@@ -13,51 +13,42 @@ import (
 )
 
 const (
-        rtcpPLIInterval = time.Second *3
+        rtcpPLIInterval = time.Second *1
 )
 
 var (
 	ongoingCalls map[uuid.UUID]*Call
-        TestTrack *webrtc.Track
 )
 
-type Constraints struct {
-	Audio bool `json:"audio"`
-	Video bool `json:"video"`
-}
-
 type RTCSessionDescription struct {
-	Constraints Constraints               `json:"body"`
 	Description webrtc.SessionDescription `json:"offer"`
-	Name        string                    `json:"name"`
 	User        string                    `json:"user"`
 	Type        string                    `json:"type"`
 }
 
 type Call struct {
 	ID           uuid.UUID                         `json:"id"`
-	Name         string                            `json:"name"`
-	Participants []string                          `json:"participants"`
-	Connections  map[string]*webrtc.PeerConnection `json:"-"`
-	Tracks       map[string]*webrtc.Track          `json:"-"`
-        Track        *webrtc.Track                     `json:"-"`
-        Track2       *webrtc.Track                     `json:"-"`
-        Track3       *webrtc.Track                     `json:"-"`
+	Participants map[string]*User                  `json:"participants"`
         Api          *webrtc.API                       `json:"-"`
-        pc           *webrtc.PeerConnection            `json:"-"`
+}
+
+type User struct {
+        Name         string                            `json:"name"`
+        AudioTrack   *webrtc.Track                     `json:"-"`
+        VideoTrack   *webrtc.Track                     `json:"-"`
+        PC           *webrtc.PeerConnection            `json:"-"`
+        //HasTrackFrom
+        HTF          []string                          `json:"-"`
 }
 
 func init() {
 	ongoingCalls = make(map[uuid.UUID]*Call)
 }
 
-func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.SessionDescription, uuid.UUID, error) {
+func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDescription, uuid.UUID, error) {
         call := &Call{
 		ID:           uuid.NewV4(),
-		Name:         name,
-		Participants: []string{user},
-		Connections:  make(map[string]*webrtc.PeerConnection),
-		Tracks:       make(map[string]*webrtc.Track),
+                Participants: make(map[string]*User),
 	}
 	//pc, err := newPeerConnection()
 	//if err != nil {
@@ -87,8 +78,8 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                 pc.Close()
                 return webrtc.SessionDescription{}, call.ID, err
         }
-        fmt.Println(videoCodecs[0].PayloadType)
-        outputTrack, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", "pion")
+
+        outputTrack, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", username)
         if err != nil {
                 fmt.Println("NewTrack creation err")
                 fmt.Println(err)
@@ -96,16 +87,6 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
                 return webrtc.SessionDescription{}, call.ID, err
         }
         
-        //outputTrack3, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", "pion3")
-        if err != nil {
-                fmt.Println("outputTrack3 creation err")
-                fmt.Println(err)
-                pc.Close()
-                return webrtc.SessionDescription{}, call.ID, err
-        }
-        //pc.AddTrack(outputTrack)
-        //pc.AddTrack(outputTrack3)
-
         pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
 
                 go func() {
@@ -135,11 +116,6 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
 
 	//attachHandlers(pc)
 
-
-        //pc.OnNegotiationNeeded(func() {
-        //        fmt.Println("NEGOTIATION NEEDED")
-        //})
-
 	err = pc.SetRemoteDescription(offer); 
         if err != nil {
 		pc.Close()
@@ -159,14 +135,17 @@ func NewCall(offer webrtc.SessionDescription, name, user string) (webrtc.Session
 		pc.Close()
 		return webrtc.SessionDescription{}, call.ID, err
 	}
-        
-        call.Connections[user] = pc
+
+        user := &User {
+                Name:   username,
+                VideoTrack:     outputTrack,
+                PC:     pc,
+                HTF:    []string{username},
+        }
+
+        call.Participants[username] = user
         ongoingCalls[call.ID] = call
         ongoingCalls[call.ID].Api = api
-        ongoingCalls[call.ID].Track = outputTrack
-        //ongoingCalls[call.ID].Track3 = outputTrack3
-        ongoingCalls[call.ID].pc = pc
-        fmt.Println("outputTrack put in ongoingCalls")
         
         return ans, call.ID, nil
 }
@@ -179,7 +158,7 @@ func GetCalls() ([]*Call, error) {
 	return calls, nil
 }
 
-func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrtc.SessionDescription, error) {
+func JoinCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (webrtc.SessionDescription, error) {
 	// if _, exists := ongoingCalls[id]; !exists {
 	//	return nil, fmt.Errorf("unable to join call %v, call does not exist", id)
 	// }
@@ -188,13 +167,7 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
 	//if err != nil {
 	//	return webrtc.SessionDescription{}, err
 	//}
-
-	// body := RTCSessionDescription{}
-	// if err := json.Unmarshal([]byte(offer), &body); err != nil {
-	//	return nil, fmt.Errorf("failed to unmarshal RTCSessionDescription")
-	// }
-
-	
+        
         config := webrtc.Configuration{ICEServers: rtcIceServers}
         pc, err := ongoingCalls[id].Api.NewPeerConnection(config)
         if err != nil {
@@ -207,107 +180,96 @@ func JoinCall(user string, offer webrtc.SessionDescription, id uuid.UUID) (webrt
                 pc.Close()
                 return webrtc.SessionDescription{}, err
         }
-
-        //need to grab local tracks and addTracks to connection
-        serverTrack := ongoingCalls[id].Track
         
-        _, err = pc.AddTrack(serverTrack)
-        if err != nil {
-                pc.Close()
-                return webrtc.SessionDescription{}, err
+        var trackName string
+        // Grab tracks from all call participants and add to connection !!Can't do this unless front end knows how many tracks are coming back so it added the appropriate number of recievers!!
+        for _, participant := range ongoingCalls[id].Participants {
+                _, err = pc.AddTrack(participant.VideoTrack)
+                if participant.Name == "Brent" {
+                        fmt.Println("Hello There")
+                }
+                if err != nil {
+                        pc.Close()
+                        return webrtc.SessionDescription{}, err
+                }
+                //For now just grabbing one track and adding to list of tracks already grabbed.
+                trackName = participant.Name
+                break
         }
-
-        //take remote track and make it a local track 
+        fmt.Println("Before Track Creation")
+        // Take remote track and make it a local track 
         //96 is the videocodec payloadType
-        outputTrack2, err := pc.NewTrack(96, rand.Uint32(), "video", "pion2")
+        outputTrack, err := pc.NewTrack(96, rand.Uint32(), "video", username)
         if err != nil {
                 fmt.Println("NewTrack creation err")
                 fmt.Println(err)
                 pc.Close()
                 return webrtc.SessionDescription{}, err
         }
-        
-        //_, err = pc.AddTrack(outputTrack2)
-        //_, err = pc.AddTrack(ongoingCalls[id].Track3)
-        if err != nil {
-                fmt.Println("outputTrack2 add err")
-        }
 
-        //_, err = ongoingCalls[id].pc.AddTrack(outputTrack2)
-        if err != nil {
-                fmt.Println("addTrack err")
-                pc.Close()
-                return webrtc.SessionDescription{}, err
-        }
+        //pc.AddTrack(outputTrack)
 
-        //answer, err := ongoingCalls[id].pc.CreateAnswer(nil)
-        if err != nil {
-                fmt.Println("Err creating answer")
-        }
-
-        //err = ongoingCalls[id].pc.SetLocalDescription(answer)
-        if err != nil {
-                fmt.Println("Err setting local description for caller one")
-        }
-
-        pc.OnTrack(func(remoteTrack2 *webrtc.Track, receiver2 *webrtc.RTPReceiver) {
-
+        pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
+                
                 go func() {
-                        ticker2 := time.NewTicker(rtcpPLIInterval)
-                        for range ticker2.C {
-                                if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack2.SSRC()}}); err != nil {
+                        ticker := time.NewTicker(rtcpPLIInterval)
+                        for range ticker.C {
+                                if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack.SSRC()}}); err != nil {
                                         fmt.Println(err)
                                 }
                         }
                 }()
 
                 for {
-                        packet2, err := remoteTrack2.ReadRTP()
+                        packet, err := remoteTrack.ReadRTP()
                         if err != nil {
                                 fmt.Println("Remote Track Read err")
                                 panic(err)
                         }
 
+                        packet.SSRC = outputTrack.SSRC()
 
-                        //packet2.SSRC = ongoingCalls[id].Track3.SSRC()
-                        packet2.SSRC = outputTrack2.SSRC()
-
-
-                        //if err := ongoingCalls[id].Track3.WriteRTP(packet2); err != nil && err != io.ErrClosedPipe {
-                        if err := outputTrack2.WriteRTP(packet2); err != nil && err != io.ErrClosedPipe {
+                        if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
                                 fmt.Println("Local Track Write err")
                                 panic(err)
                         }
                 }
         })
 
-        // if err := pc.SetRemoteDescription(body.Description); err != nil {
         if err := pc.SetRemoteDescription(offer); err != nil {
-		pc.Close()
+		fmt.Println("Err SRD")
+                pc.Close()
 		return webrtc.SessionDescription{}, err
 	}
 
 	ans, err := pc.CreateAnswer(nil)
 	if err != nil {
+                fmt.Println("Err CA")
 		pc.Close()
 		return webrtc.SessionDescription{}, err
 	}
-
+        
 	err = pc.SetLocalDescription(ans)
         if err != nil {
+                fmt.Println("Err SLD")
 		pc.Close()
 		return webrtc.SessionDescription{}, err
 	}
 
-        ongoingCalls[id].Track2 = outputTrack2
-	// ongoingCalls[id].Participants = append(ongoingCalls[id].Participants, user)
-	// ongoingCalls[id].Connections[user] = pc
-        fmt.Println("Join Call Success")
 
+        user := &User {
+                Name:   username,
+                VideoTrack:     outputTrack,
+                PC:     pc,
+                HTF:    []string{username, trackName},
+        }
+
+	ongoingCalls[id].Participants[username] = user
+        fmt.Println("Call Joined")
 	return ans, nil
 }
 
-func LeaveCall(user string, id uuid.UUID) error {
+func LeaveCall(username string, id uuid.UUID) error {
 	if _, exists := ongoingCalls[id]; !exists {
 		return fmt.Errorf("unable to leave call %v, call does not exist", id)
 	}
@@ -315,16 +277,43 @@ func LeaveCall(user string, id uuid.UUID) error {
 	return nil
 }
 
-func RenegotiateCall(id uuid.UUID) (webrtc.SessionDescription, error) {
-        pc := ongoingCalls[id].pc
+func RenegotiateCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (webrtc.SessionDescription, error) {
+        //Needs exists check
 
-        _, err := pc.AddTrack(ongoingCalls[id].Track2)
-        if err != nil {
-                fmt.Println("Err adding track")
-                pc.Close()
-                return webrtc.SessionDescription{}, err
+        pc := ongoingCalls[id].Participants[username].PC
+        user := ongoingCalls[id].Participants[username]
+        //!!Can't do this unless front end knows how many tracks to expect back beforehand!!
+        //Stop gap fix is a collection of tracks already grabbed and checking against list to get tracks user doesnt have, has to be one at a time due to above issue
+        for _, participant := range ongoingCalls[id].Participants {
+                //Need Unique key for participants to avoid same name problems
+                // Skip adding the current user's tracks to their own connection
+                //currently adds all the tracks but really just need the new tracks/ tracks user doesn't have
+                if participant.Name == username {
+                        fmt.Println("General Kenobi")
+                        continue
+                }
+                var needsTrack = true
+                for _, name := range user.HTF {
+                        if name == participant.Name {
+                                needsTrack = false
+                        }
+                }
+                if needsTrack {                     
+                        _, err := pc.AddTrack(participant.VideoTrack)
+                        if err != nil {
+                                pc.Close()
+                                return webrtc.SessionDescription{}, err
+                        }
+                        ongoingCalls[id].Participants[username].HTF = append(ongoingCalls[id].Participants[username].HTF, participant.Name)
+                }
         }
         
+        if err := pc.SetRemoteDescription(offer); err != nil {
+		fmt.Println("Err SRD in REN")
+                pc.Close()
+		return webrtc.SessionDescription{}, err
+	}
+
 	ans, err := pc.CreateAnswer(nil)
 	if err != nil {
                 fmt.Println("Err creating answer")
@@ -334,7 +323,6 @@ func RenegotiateCall(id uuid.UUID) (webrtc.SessionDescription, error) {
 
 	err = pc.SetLocalDescription(ans)
         if err != nil {
-                fmt.Println("Err setting local description")
 		pc.Close()
 		return webrtc.SessionDescription{}, err
 	}

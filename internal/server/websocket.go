@@ -2,6 +2,8 @@ package server
 
 import (
         "encoding/json"
+        
+        //"github.com/fangelod/webrtc-test/internal/rtc"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -21,7 +23,11 @@ func init() {
 type message struct {
         //Need action for switch case
         //Need callId, username, sdp offer
-
+        // Data RTCSessionDescription ?
+        Action  string  `json:"action"`
+        CallId  string  `json:"callId"`
+        Name    string  `json:"name"`
+        //Offer   webrtc.SessionDescription  `json:"offer"`
 
 }
 
@@ -43,8 +49,31 @@ func websocketHandler(c *gin.Context) {
 		        //if m.Action == "SAVE_NAME" {
 		        //	conns[m.Data] = conn
 		        //}
-	        }
 
+                        //case  "NEW_CALL" {
+                        //        newCallAction(m)        
+                        //}
+
+                        //case "JOIN_CALL" {
+                        //        joinCallAction(m)
+                        //}
+
+                        //case "LEAVE_CALL" {
+                        //        leaveCallAction(m)
+                        //}               
+	        }
 		conn.WriteMessage(t, msg)
-	}
+        }
 }
+
+//func newCallAction(m message) {
+//        answer, callId, err := rtc.NewCall(m.Offer, m.name, "")
+//        if err != nil {
+//                //messageBuilder with error
+//        }
+//
+//        //messageBuilder()
+//}
+
+//func messageBuilder(){
+//}

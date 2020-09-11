@@ -142,12 +142,12 @@ func AddICECandidateForUser(id uuid.UUID, user, candidate string) error {
 		return fmt.Errorf("unable to add ice candidate, call %v does not exist", id)
 	}
 
-	if _, exists := ongoingCalls[id].Connections[user]; !exists {
+	if _, exists := ongoingCalls[id].Participants[user]; !exists {
 		return fmt.Errorf("unable to add ice candidate, connection for %s does not exist", user)
 	}
 
 	iceCandidate := webrtc.ICECandidateInit{Candidate: candidate}
-	if err := ongoingCalls[id].Connections[user].AddICECandidate(iceCandidate); err != nil {
+        if err := ongoingCalls[id].Participants[user].PC.AddICECandidate(iceCandidate); err != nil {
 		return err
 	}
 

@@ -86,28 +86,49 @@ const App = () => {
   }, []);
 
   return (
-    <div id={'content'}>
-      <div id={'signalingContainer'} style={{ display: 'none' }}>
-        Browser base64 Session Description<br />
-        <textarea id={'localSessionDescription'} readOnly={true}></textarea> <br /> 
-        Golang base64 Session Description<br />
-        <textarea id={'remoteSessionDescription'}></textarea> <br />
-        <button onClick={() => console.log('heh')}> Start Session </button> <br />
-      </div> <br />
-      Video<br />
-      <video id={'video1'} width={'160'} height={'120'} autoPlay muted></video><br />
-      <video id={'video2'} width={'160'} height={'120'} autoPlay muted></video><br />
-      <button className={'createSessionButton'} onClick={() => dispatch(startCall())}> Publish a Broadcast </button><br />
-      {calls.valueSeq().map(call => {
-        return (
-          <button className={'createSessionButton'} onClick={() => dispatch(joinCall(call.get('id'), ''))}> {call.get('id')} </button>
-        );
-      })} 
-      <br /><br />
-      <button className={'checkMediaStream'} onClick={() => console.log(document.getElementById('video2').srcObject)}> Check Stream </button>
-      <button className={'renegotiate'} onClick={() => dispatch(renegotiateForce())}> Renegotiate </button>
-      <Websockets />
-    </div>
+    <React.Fragment>
+      <div id={'webcamDiv'}>
+        Myself<br />
+        <video id={'video1'} width={'160'} height={'120'} autoPlay muted></video><br />
+      </div>
+      <div id={'videoDiv'}>
+        Others<br />
+      </div>
+      <div id={'buttons'}>
+        <button className={'createSessionButton'} onClick={() => dispatch(startCall())}> Start Call </button><br />
+        {calls.valueSeq().map(call => {
+          return (
+            <button className={'createSessionButton'} onClick={() => dispatch(joinCall(call.get('id'), ''))}> {call.get('id')} </button>
+          );
+        })} 
+        <br /><br />
+        <button className={'checkMediaStream'} onClick={() => console.log(document.getElementById('video2').srcObject)}> Check Stream </button>
+        <button className={'renegotiate'} onClick={() => dispatch(renegotiateForce())}> Renegotiate </button>
+      </div>
+      <Dialog disableBackdropClick={true} disableEscapeKeyDown={true} open={open}>
+        <DialogContent>
+          <DialogContentText>
+            Choose a name to continue
+          </DialogContentText>
+          <TextField
+            autoFocus={true}
+            onChange={event => setName(event.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            className={classes.submit}
+            disabled={name === ""}
+            onClick={() => {
+              dispatch(saveName(name));
+              setOpen(false);
+            }}
+          >
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </React.Fragment>
   );
 };
 export default App;

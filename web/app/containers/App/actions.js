@@ -50,7 +50,7 @@ export const iceCandidateErr = err => ({
 
 export const iceCandidateSuccess = () => ({ type: ICE_CANDIDATE_SUCCESS });
 
-export const joinCall = (id, user) => ({
+export const joinCall = (id) => ({
   type: JOIN_CALL,
   payload: id
 });
@@ -61,11 +61,11 @@ export const joinCallErr = (id, err) => ({
   meta: id
 });
 
-export const joinCallSuccess = (id, answer) => ({
+export const joinCallSuccess = (id, peerConnection) => ({
   type: JOIN_CALL_SUCCESS,
   payload: {
     id: id,
-    answer: answer
+    pc: peerConnection
   }
 });
 
@@ -95,11 +95,10 @@ export const renegotiateForce = () => ({
 });
         
 
-export const renegotiateSuccess = (id, answer) => ({
+export const renegotiateSuccess = (peerConnection) => ({
   type: RENEGOTIATE_SUCCESS,
   payload: {
-    id: id,
-    answer: answer
+    pc: peerConnection
   }
 });
 
