@@ -1,4 +1,4 @@
-import { getCalls, saveName, startCall, joinCall, renegotiateForce } from 'App/actions';
+import { getCalls, saveName, startCall, joinCall, renegotiateForce, leaveCall } from 'App/actions';
 import { selectCalls, selectTracks, selectUser } from 'App/selectors';
 import Websockets from 'containers/Websocket';
 
@@ -104,6 +104,7 @@ const App = () => {
         <br /><br />
         <button className={'checkMediaStream'} onClick={() => console.log(document.getElementById('video2').srcObject)}> Check Stream </button>
         <button className={'renegotiate'} onClick={() => dispatch(renegotiateForce())}> Renegotiate </button>
+        <button className={'leave call'} onClick={() => dispatch(leaveCall())}> Leave Call </button>
       </div>
       <Dialog disableBackdropClick={true} disableEscapeKeyDown={true} open={open}>
         <DialogContent>

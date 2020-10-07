@@ -29,7 +29,7 @@ type RTCSessionDescription struct {
 type Call struct {
 	ID           uuid.UUID                         `json:"id"`
 	Participants map[string]*User                  `json:"participants"`
-        Api          *webrtc.API                       `json:"-"`
+        //Api          *webrtc.API                       `json:"-"`
 }
 
 type User struct {
@@ -66,10 +66,11 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
                 fmt.Println("Offer had no video codecs");
         }
 
-        api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
+        //api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
 
         config := webrtc.Configuration{ICEServers: rtcIceServers}
-        pc, err := api.NewPeerConnection(config)
+        //pc, err := api.NewPeerConnection(config)
+        pc, err := webrtc.NewPeerConnection(config)
         if err != nil {
                 return webrtc.SessionDescription{}, call.ID, err
         }
@@ -93,7 +94,12 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
                         ticker := time.NewTicker(rtcpPLIInterval)
                         for range ticker.C {
                                 if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack.SSRC()}}); err != nil {
+                                        fmt.Println("In ticker")
                                         fmt.Println(err)
+                                        if err == io.ErrClosedPipe {
+                                                fmt.Println("Was a closed pipe")
+                                                return
+                                        }
                                 }
                         }
                 }()
@@ -102,15 +108,17 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
                         packet, err := remoteTrack.ReadRTP()
                         if err != nil {
                                 fmt.Println("Remote Track Read err")
-                                panic(err)
+                                //panic(err)
+                                return
                         }
 
                         packet.SSRC = outputTrack.SSRC()
-
+                        
                         if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
                                 fmt.Println("Local Track Write err")
                                 panic(err)
                         }
+                        fmt.Println("Read/Write Loop Going")
                 }
         })
 
@@ -145,7 +153,7 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
 
         call.Participants[username] = user
         ongoingCalls[call.ID] = call
-        ongoingCalls[call.ID].Api = api
+        //ongoingCalls[call.ID].Api = api
         
         return ans, call.ID, nil
 }
@@ -169,7 +177,9 @@ func JoinCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (w
 	//}
         
         config := webrtc.Configuration{ICEServers: rtcIceServers}
-        pc, err := ongoingCalls[id].Api.NewPeerConnection(config)
+        //pc, err := ongoingCalls[id].Api.NewPeerConnection(config)
+
+        pc, err := webrtc.NewPeerConnection(config)
         if err != nil {
                 return webrtc.SessionDescription{}, err
         }
@@ -269,12 +279,23 @@ func JoinCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (w
 	return ans, nil
 }
 
-func LeaveCall(username string, id uuid.UUID) error {
+func LeaveCall(id uuid.UUID, username string) error {
 	if _, exists := ongoingCalls[id]; !exists {
 		return fmt.Errorf("unable to leave call %v, call does not exist", id)
 	}
 
-	return nil
+        //Testing closing the pc
+        pc := ongoingCalls[id].Participants[username].PC
+	pc.Close()
+
+        delete(ongoingCalls[id].Participants, username)
+        //If there are no more users in call then delete the call from ongoingCalls
+
+        fmt.Println("Call Left")
+
+        return nil
+
+
 }
 
 func RenegotiateCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (webrtc.SessionDescription, error) {

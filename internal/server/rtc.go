@@ -66,8 +66,14 @@ func leaveCallHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+        
+        sdp := rtc.RTCSessionDescription{}
+        if err := json.NewDecoder(c.Request.Body).Decode(&sdp); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
 
-	if err := rtc.LeaveCall("", id); err != nil {
+	if err := rtc.LeaveCall(id, sdp.User); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

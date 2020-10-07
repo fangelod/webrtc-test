@@ -17,6 +17,7 @@ import {
   GET_CALLS,
   ICE_CANDIDATE,
   JOIN_CALL,
+  LEAVE_CALL,
   RENEGOTIATE,
   SAVE_TRACK,
   START_CALL
@@ -179,6 +180,24 @@ function* doJoinCall(action) {
   }
 }
 
+function* doLeaveCall() {
+  try {
+    const pc = yield select(selectPeerConnection);
+    const callId = yield select(selectCallId);
+    const user = yield select(selectUser);
+    
+    yield call(request, `/calls/${callId}/leave`, {
+      method: 'POST',
+      data: {
+        id: callId,
+        user: user,
+      }
+    });
+
+  } catch (err) {
+  }
+}
+
 function* doRenegotiateCall() {
   try {
     console.log('Renegotiating');
@@ -324,6 +343,10 @@ export function* joinCallWatcher() {
   yield takeEvery(JOIN_CALL, doJoinCall);
 }
 
+export function* leaveCallWatcher() {
+  yield takeEvery(LEAVE_CALL, doLeaveCall);
+}
+
 export function* renegotiateWatcher() {
   yield takeEvery(RENEGOTIATE, doRenegotiateCall);
 }
@@ -341,6 +364,7 @@ export default [
   getCallsWatcher,
   iceCandidateWatcher,
   joinCallWatcher,
+  leaveCallWatcher,
   renegotiateWatcher,
   saveTrackWatcher,
   startCallWatcher,
