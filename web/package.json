@@ -36,7 +36,7 @@
     "@material-ui/core": "^4.10.0",
     "@material-ui/icons": "^4.9.1",
     "@redux-saga/delay-p": "^1.1.2",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "idempotent-babel-polyfill": "^7.4.4",
     "immutable": "^4.0.0-rc.12",
     "react": "^16.13.1",
