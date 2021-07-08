@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	webrtc "github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
 	uuid "github.com/satori/go.uuid"
 
 	"gopkg.in/yaml.v2"

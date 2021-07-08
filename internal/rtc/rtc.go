@@ -5,10 +5,10 @@ import (
 	"fmt"
         "io"
         "time"
-        "math/rand"
+        //"math/rand"
 
         "github.com/pion/rtcp"
-	webrtc "github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -34,8 +34,8 @@ type Call struct {
 
 type User struct {
         Name         string                            `json:"name"`
-        AudioTrack   *webrtc.Track                     `json:"-"`
-        VideoTrack   *webrtc.Track                     `json:"-"`
+        AudioTrack   *webrtc.TrackLocalStaticRTP                     `json:"-"`
+        VideoTrack   *webrtc.TrackLocalStaticRTP                    `json:"-"`
         PC           *webrtc.PeerConnection            `json:"-"`
         //HasTrackFrom
         HTF          []string                          `json:"-"`
@@ -50,21 +50,22 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
 		ID:           uuid.NewV4(),
                 Participants: make(map[string]*User),
 	}
+
 	//pc, err := newPeerConnection()
 	//if err != nil {
 	//	return webrtc.SessionDescription{}, nil, err
 	//}
         
-        mediaEngine := webrtc.MediaEngine{}
-        err := mediaEngine.PopulateFromSDP(offer)
-        if err != nil {
-                return webrtc.SessionDescription{}, call.ID, err
-        }
+        // mediaEngine := webrtc.MediaEngine{}
+        // err := mediaEngine.PopulateFromSDP(offer)
+        // if err != nil {
+        //         return webrtc.SessionDescription{}, call.ID, err
+        // }
         
-        videoCodecs := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo)
-        if len(videoCodecs) == 0 {
-                fmt.Println("Offer had no video codecs");
-        }
+        // videoCodecs := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo)
+        // if len(videoCodecs) == 0 {
+        //         fmt.Println("Offer had no video codecs");
+        // }
 
         //api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
 
@@ -75,25 +76,32 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
                 return webrtc.SessionDescription{}, call.ID, err
         }
 
-        if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
-                pc.Close()
-                return webrtc.SessionDescription{}, call.ID, err
-        }
+        //Unnecessary
+        // if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
+        //         pc.Close()
+        //         return webrtc.SessionDescription{}, call.ID, err
+        // }
 
-        outputTrack, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", username)
-        if err != nil {
-                fmt.Println("NewTrack creation err")
-                fmt.Println(err)
-                pc.Close()
-                return webrtc.SessionDescription{}, call.ID, err
-        }
+        // outputTrack, err := pc.NewTrack(videoCodecs[0].PayloadType, rand.Uint32(), "video", username)
+        // if err != nil {
+        //         fmt.Println("NewTrack creation err")
+        //         fmt.Println(err)
+        //         pc.Close()
+        //         return webrtc.SessionDescription{}, call.ID, err
+        // }
         
-        pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
+        // localTrackChan := make(chan *webrtc.TrackLocalStaticRTP)
 
+        localTrack, newTrackErr := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", "pion")
+        if newTrackErr != nil {
+                panic(newTrackErr)
+        }
+
+        pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
                 go func() {
                         ticker := time.NewTicker(rtcpPLIInterval)
                         for range ticker.C {
-                                if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack.SSRC()}}); err != nil {
+                                if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}}); err != nil {
                                         fmt.Println("In ticker")
                                         fmt.Println(err)
                                         if err == io.ErrClosedPipe {
@@ -104,23 +112,44 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
                         }
                 }()
 
-                for {
-                        packet, err := remoteTrack.ReadRTP()
-                        if err != nil {
-                                fmt.Println("Remote Track Read err")
-                                //panic(err)
-                                return
-                        }
+		// localTrack, newTrackErr := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, "video", "pion")
+		// if newTrackErr != nil {
+		// 	panic(newTrackErr)
+		// }
+		// localTrackChan <- localTrack
 
-                        packet.SSRC = outputTrack.SSRC()
+                rtpBuf := make([]byte, 1400)
+                for { 
+                        // packet, err := remoteTrack.ReadRTP()
+                        // if err != nil {
+                        //         fmt.Println("Remote Track Read err")
+                        //         //panic(err)
+                        //         return
+                        // }
+
+                        // packet.SSRC = outputTrack.SSRC()
                         
-                        if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
-                                fmt.Println("Local Track Write err")
-                                panic(err)
-                        }
-                        fmt.Println("Read/Write Loop Going")
+                        // if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
+                        //         fmt.Println("Local Track Write err")
+                        //         panic(err)
+                        // }
+                        //fmt.Println("Read/Write Loop Going")
+
+                        i, _, readErr := remoteTrack.Read(rtpBuf)
+			if readErr != nil {
+                                fmt.Println("Remote Track Read err")
+				//panic(readErr)
+			}
+
+			// ErrClosedPipe means we don't have any subscribers, this is ok if no peers have connected yet
+			if _, err = localTrack.Write(rtpBuf[:i]); err != nil && err != io.ErrClosedPipe {
+				fmt.Println("Local Track Write err")
+                                //panic(err)
+			}
                 }
         })
+
+        // outputTrack := <-localTrackChan
 
 	//attachHandlers(pc)
 
@@ -146,7 +175,7 @@ func NewCall(offer webrtc.SessionDescription, username string) (webrtc.SessionDe
 
         user := &User {
                 Name:   username,
-                VideoTrack:     outputTrack,
+                VideoTrack:     localTrack, //outputTrack,
                 PC:     pc,
                 HTF:    []string{username},
         }
@@ -183,13 +212,14 @@ func JoinCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (w
         if err != nil {
                 return webrtc.SessionDescription{}, err
         }
-        
-        //_, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo)
-        if err != nil {
-                fmt.Println("Err adding transceiver")
-                pc.Close()
-                return webrtc.SessionDescription{}, err
-        }
+
+        //Unnecessary
+        // _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo)
+        // if err != nil {
+        //         fmt.Println("Err adding transceiver")
+        //         pc.Close()
+        //         return webrtc.SessionDescription{}, err
+        // }
         
         var trackName string
         // Grab tracks from all call participants and add to connection !!Can't do this unless front end knows how many tracks are coming back so it added the appropriate number of recievers!!
@@ -209,45 +239,65 @@ func JoinCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (w
         fmt.Println("Before Track Creation")
         // Take remote track and make it a local track 
         //96 is the videocodec payloadType
-        outputTrack, err := pc.NewTrack(96, rand.Uint32(), "video", username)
-        if err != nil {
-                fmt.Println("NewTrack creation err")
-                fmt.Println(err)
-                pc.Close()
-                return webrtc.SessionDescription{}, err
-        }
+        // outputTrack, err := pc.NewTrack(96, rand.Uint32(), "video", username)
+        // if err != nil {
+        //         fmt.Println("NewTrack creation err")
+        //         fmt.Println(err)
+        //         pc.Close()
+        //         return webrtc.SessionDescription{}, err
+        // }
 
         //pc.AddTrack(outputTrack)
 
-        pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
+        localTrack, newTrackErr := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", "pion")
+        if newTrackErr != nil {
+                fmt.Println("Track creation err")
+                panic(newTrackErr)
+        }
+
+        pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
                 
                 go func() {
                         ticker := time.NewTicker(rtcpPLIInterval)
                         for range ticker.C {
-                                if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack.SSRC()}}); err != nil {
+                                if err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}}); err != nil {
                                         fmt.Println(err)
                                 }
                         }
                 }()
 
+                rtpBuf := make([]byte, 1400)
                 for {
-                        packet, err := remoteTrack.ReadRTP()
-                        if err != nil {
+                        // packet, err := remoteTrack.ReadRTP()
+                        // if err != nil {
+                        //         fmt.Println("Remote Track Read err")
+                        //         panic(err)
+                        // }
+
+                        // packet.SSRC = outputTrack.SSRC()
+
+                        // if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
+                        //         fmt.Println("Local Track Write err")
+                        //         panic(err)
+                        // }
+                        
+                        i, _, readErr := remoteTrack.Read(rtpBuf)
+			if readErr != nil {
                                 fmt.Println("Remote Track Read err")
-                                panic(err)
-                        }
+				//panic(readErr)
+			}
 
-                        packet.SSRC = outputTrack.SSRC()
-
-                        if err := outputTrack.WriteRTP(packet); err != nil && err != io.ErrClosedPipe {
-                                fmt.Println("Local Track Write err")
-                                panic(err)
-                        }
+			// ErrClosedPipe means we don't have any subscribers, this is ok if no peers have connected yet
+			if _, err = localTrack.Write(rtpBuf[:i]); err != nil && err != io.ErrClosedPipe {
+				fmt.Println("Local Track Write err")
+                                //panic(err)
+			}
                 }
         })
 
         if err := pc.SetRemoteDescription(offer); err != nil {
-		fmt.Println("Err SRD")
+		fmt.Println(offer)
+                fmt.Println("Err SRD")
                 pc.Close()
 		return webrtc.SessionDescription{}, err
 	}
@@ -269,7 +319,7 @@ func JoinCall(offer webrtc.SessionDescription, id uuid.UUID, username string) (w
 
         user := &User {
                 Name:   username,
-                VideoTrack:     outputTrack,
+                VideoTrack:     localTrack, //outputTrack,
                 PC:     pc,
                 HTF:    []string{username, trackName},
         }

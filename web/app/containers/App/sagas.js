@@ -204,7 +204,7 @@ function* doRenegotiateCall() {
     const pc = yield select(selectPeerConnection);
     const callId = yield select(selectCallId);
     const user = yield select(selectUser);
-    pc.addTransceiver('video');
+    //pc.addTransceiver('video');
     console.log("Receivers");
     console.log(pc.getReceivers());
       

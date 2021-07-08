@@ -3,7 +3,7 @@ package rtc
 import (
 	"fmt"
 
-	webrtc "github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
 )
 
 func newPeerConnection() (*webrtc.PeerConnection, error) {
@@ -38,7 +38,7 @@ func attachHandlers(pc *webrtc.PeerConnection) {
 		// Debug signaling state
 	})
 
-	pc.OnTrack(func(t *webrtc.Track, r *webrtc.RTPReceiver) {
+	pc.OnTrack(func(t *webrtc.TrackRemote, r *webrtc.RTPReceiver) {
 		// Add track to call
 	})
 }
